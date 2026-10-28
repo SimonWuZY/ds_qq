@@ -25,12 +25,14 @@ dsqq-bot ───────────────► DeepSeek Chat Completi
                        http://127.0.0.1:8080
 ```
 
-运行依赖为 Python 3.11+、FastAPI、HTTPX 和 SQLite。机器人与看板只绑定回环地址，不需要公网服务器或反向代理。
+运行依赖为 Python 3.11+、FastAPI、HTTPX 和 SQLite。默认仅绑定回环地址，不需要公网服务器或反向代理。
+
+> **macOS 用户推荐阅读 [macOS Docker 接入指南](docs/NAPCAT_MACOS.md)**。该路线已在 Apple Silicon 上完成真实 QQ 群聊验证，可避开部分原生 NapCat 的代码签名崩溃。
 
 ## 1. 准备
 
-1. 安装 macOS 版 QQ，并准备一个已加入目标群的 QQ 账号。建议使用专门的小号作为机器人，并自行评估第三方协议工具的账号风险。
-2. 按 [NapCat 官方安装文档](https://napneko.github.io/guide/boot/Shell) 安装 NapCat。macOS 需先将 QQ 安装到 `/Applications/QQ.app`，再运行 NapCat Mac Installer。
+1. 准备一个已加入目标群的 QQ 账号。建议使用专门的小号作为机器人，并自行评估第三方协议工具的账号风险。
+2. 安装 NapCat。macOS 优先使用上述 Docker 指南；其他平台可参考 [NapCat 官方仓库](https://github.com/NapNeko/NapCatQQ/releases)。
 3. 在 [DeepSeek 开放平台](https://platform.deepseek.com/) 创建 API Key。
 4. 安装 [uv](https://docs.astral.sh/uv/)，然后安装项目依赖：
 
