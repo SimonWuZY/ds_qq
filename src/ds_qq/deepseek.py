@@ -40,8 +40,10 @@ class DeepSeekClient:
         session_id: int,
         trigger_message_id: int,
         context: list[dict[str, Any]],
+        system_prompt: str | None = None,
     ) -> DeepSeekReply:
-        messages = [{"role": "system", "content": self._settings.bot_system_prompt}, *context]
+        prompt = system_prompt or self._settings.bot_system_prompt
+        messages = [{"role": "system", "content": prompt}, *context]
         payload = {
             "model": self._settings.deepseek_model,
             "messages": messages,

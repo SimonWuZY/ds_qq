@@ -15,6 +15,7 @@ from ds_qq.db import Database
 from ds_qq.deepseek import DeepSeekClient, DeepSeekError
 from ds_qq.images import ImageError, ImageStore
 from ds_qq.onebot import OneBotConnection, parse_message
+from ds_qq.persona import PersonaManager
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +27,13 @@ class GroupBot:
         database: Database,
         deepseek: DeepSeekClient,
         images: ImageStore,
+        persona: PersonaManager,
     ):
         self._settings = settings
         self._database = database
         self._deepseek = deepseek
         self._images = images
+        self._persona = persona
         self._locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._last_trigger: dict[int, float] = {}
 
@@ -121,6 +124,7 @@ class GroupBot:
                 session_id=session_id,
                 trigger_message_id=stored_id,
                 context=context,
+                system_prompt=self._persona.system_prompt(),
             )
         except DeepSeekError as exc:
             logger.error("DeepSeek request failed for group %s: %s", group_id, exc)
@@ -159,7 +163,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         database = Database(settings.database_path)
         deepseek = DeepSeekClient(settings, database)
         images = ImageStore(settings)
-        app.state.bot = GroupBot(settings, database, deepseek, images)
+        app.state.bot = GroupBot(
+            settings, database, deepseek, images, PersonaManager(settings)
+        )
         app.state.tasks = set()
         try:
             yield
