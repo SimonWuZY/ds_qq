@@ -22,7 +22,7 @@ dsqq-bot（macOS）──► DeepSeek API
 - 一个普通 QQ 小号，已设置头像和昵称；不要优先使用主号。
 - 主号已添加小号为好友，并把小号邀请进目标群。
 - 已在项目 `.env` 配置 `DEEPSEEK_API_KEY`、`QQ_GROUP_IDS` 和 `ONEBOT_ACCESS_TOKEN`。
-- 已执行 `uv sync`。
+- 已执行 `uv sync` 和 `cp persona.example.txt persona.txt`；人格与长期记忆设置见[人格指南](PERSONALITY.md)。
 
 NapCat 使用非官方 QQ 协议，存在账号风控风险。请使用小号并控制发言频率。
 
