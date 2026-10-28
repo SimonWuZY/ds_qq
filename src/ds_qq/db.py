@@ -292,3 +292,88 @@ class Database:
                     time.time(),
                 ),
             )
+
+    def usage_overview(self, days: int) -> dict[str, Any]:
+        with self._lock:
+            overview = {
+                "today": self._usage_summary(
+                    "WHERE date(created_at, 'unixepoch', 'localtime') = "
+                    "date('now', 'localtime')"
+                ),
+                "week": self._usage_summary(
+                    "WHERE created_at >= strftime("
+                    "'%s', date('now', 'localtime', '-6 days', 'start of day'))"
+                ),
+                "all": self._usage_summary(""),
+            }
+            period_filter = (
+                "WHERE created_at >= strftime('%s', date('now', 'localtime', ?, 'start of day'))"
+            )
+            period_params = (f"-{days - 1} days",)
+            daily = self._connection.execute(
+                f"""SELECT date(created_at, 'unixepoch', 'localtime') AS date,
+                    COUNT(*) AS requests,
+                    COALESCE(SUM(total_tokens), 0) AS tokens,
+                    COALESCE(SUM(estimated_cost_usd), 0) AS cost
+                FROM api_usage {period_filter}
+                GROUP BY date ORDER BY date""",
+                period_params,
+            ).fetchall()
+            groups = self._connection.execute(
+                f"""SELECT group_id, COUNT(*) AS requests,
+                    COALESCE(SUM(total_tokens), 0) AS tokens,
+                    COALESCE(SUM(estimated_cost_usd), 0) AS cost
+                FROM api_usage {period_filter}
+                GROUP BY group_id ORDER BY tokens DESC LIMIT 10""",
+                period_params,
+            ).fetchall()
+            models = self._connection.execute(
+                f"""SELECT model, COUNT(*) AS requests,
+                    COALESCE(SUM(total_tokens), 0) AS tokens,
+                    COALESCE(SUM(estimated_cost_usd), 0) AS cost
+                FROM api_usage {period_filter}
+                GROUP BY model ORDER BY tokens DESC""",
+                period_params,
+            ).fetchall()
+            recent = self._connection.execute(
+                """SELECT id, request_id, group_id, model, status, latency_ms,
+                    prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
+                    estimated_cost_usd, finish_reason, error, created_at
+                FROM api_usage ORDER BY id DESC LIMIT 20"""
+            ).fetchall()
+        return {
+            **overview,
+            "days": days,
+            "daily": [dict(row) for row in daily],
+            "groups": [dict(row) for row in groups],
+            "models": [dict(row) for row in models],
+            "recent": [dict(row) for row in recent],
+            "generated_at": time.time(),
+        }
+
+    def _usage_summary(self, where: str) -> dict[str, float | int]:
+        row = self._connection.execute(
+            f"""SELECT COUNT(*) AS requests,
+                COALESCE(SUM(status = 'success'), 0) AS successes,
+                COALESCE(SUM(prompt_tokens), 0) AS prompt_tokens,
+                COALESCE(SUM(completion_tokens), 0) AS completion_tokens,
+                COALESCE(SUM(total_tokens), 0) AS total_tokens,
+                COALESCE(SUM(cache_hit_tokens), 0) AS cache_hit_tokens,
+                COALESCE(SUM(estimated_cost_usd), 0) AS cost,
+                COALESCE(AVG(latency_ms), 0) AS average_latency_ms
+            FROM api_usage {where}"""
+        ).fetchone()
+        requests = int(row["requests"])
+        prompt_tokens = int(row["prompt_tokens"])
+        return {
+            "requests": requests,
+            "success_rate": (int(row["successes"]) / requests * 100) if requests else 0,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": int(row["completion_tokens"]),
+            "total_tokens": int(row["total_tokens"]),
+            "cache_rate": (int(row["cache_hit_tokens"]) / prompt_tokens * 100)
+            if prompt_tokens
+            else 0,
+            "cost": float(row["cost"]),
+            "average_latency_ms": float(row["average_latency_ms"]),
+        }

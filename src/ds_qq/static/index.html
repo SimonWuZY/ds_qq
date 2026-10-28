@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ds_qq · DeepSeek 用量看板</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">DS_QQ OBSERVABILITY</p>
+        <h1>DeepSeek 用量看板</h1>
+        <p class="subtitle">本地数据 · 独立进程 · 每 15 秒自动刷新</p>
+      </div>
+      <div class="header-actions">
+        <select id="days" aria-label="趋势时间范围">
+          <option value="7">近 7 天</option>
+          <option value="30" selected>近 30 天</option>
+          <option value="90">近 90 天</option>
+        </select>
+        <span id="health" class="health">连接中</span>
+      </div>
+    </header>
+
+    <div id="error" class="error" hidden></div>
+
+    <section class="cards" aria-label="核心指标">
+      <article><p>今日请求</p><strong id="today-requests">—</strong><span id="today-success">成功率 —</span></article>
+      <article><p>近 7 日 Tokens</p><strong id="week-tokens">—</strong><span id="week-split">输入 — · 输出 —</span></article>
+      <article><p>缓存命中率</p><strong id="week-cache">—</strong><span>按近 7 日输入 Token 计算</span></article>
+      <article><p>累计估算成本</p><strong id="all-cost">—</strong><span id="all-requests">共 — 次请求</span></article>
+    </section>
+
+    <section class="panel trend">
+      <div class="panel-title"><div><p class="eyebrow">TOKEN TREND</p><h2>每日 Token 趋势</h2></div><span id="average-latency"></span></div>
+      <div id="chart" class="chart" role="img" aria-label="每日 Token 柱状图"></div>
+    </section>
+
+    <div class="two-columns">
+      <section class="panel">
+        <div class="panel-title"><h2>群聊分布</h2><span>按 Token 排序</span></div>
+        <div id="groups" class="distribution"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-title"><h2>模型分布</h2><span>当前时间范围</span></div>
+        <div id="models" class="distribution"></div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-title"><h2>最近 API 调用</h2><span id="updated-at">尚未更新</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>群号</th><th>模型</th><th>状态</th><th>输入 / 输出</th><th>缓存</th><th>延迟</th><th>估算成本</th></tr></thead>
+          <tbody id="recent"></tbody>
+        </table>
+      </div>
+    </section>
+    <footer>成本由本地配置费率估算，请以 DeepSeek 官方账单为准。看板不会读取或展示聊天内容与 API Key。</footer>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
