@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     onebot_access_token: SecretStr = SecretStr("")
     bot_host: str = "127.0.0.1"
-    bot_port: int = Field(default=6099, ge=1, le=65535)
+    bot_port: int = Field(default=3001, ge=1, le=65535)
     qq_group_ids: str = ""
     bot_system_prompt: str = "你是群里的 AI 助手，回答简洁、友好、准确。"
     bot_context_messages: int = Field(default=30, ge=1, le=200)
