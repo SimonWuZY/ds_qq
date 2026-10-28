@@ -1,0 +1,56 @@
+:root {
+  color-scheme: dark;
+  --bg: #090d14;
+  --panel: #111823;
+  --line: #233043;
+  --muted: #8c9bb0;
+  --text: #ecf3fc;
+  --accent: #6ee7c8;
+  --blue: #74a7ff;
+  --danger: #ff8b8b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(circle at 85% 0, #162b36 0, transparent 35%), var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+main { width: min(1440px, calc(100% - 48px)); margin: 0 auto; padding: 48px 0 32px; }
+header, .panel-title, .header-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+h1, h2, p { margin: 0; }
+h1 { margin-top: 8px; font-size: clamp(28px, 4vw, 42px); letter-spacing: -1px; }
+h2 { font-size: 17px; }
+.eyebrow { color: var(--accent); font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: 2px; }
+.subtitle, .panel-title span, footer { color: var(--muted); }
+.subtitle { margin-top: 10px; font-size: 14px; }
+select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.health { color: var(--accent); font-size: 13px; }
+.health::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+.health.offline { color: var(--danger); }
+.error { margin-top: 24px; padding: 14px; color: var(--danger); background: #341c24; border: 1px solid #66303b; border-radius: 12px; }
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 32px 0 16px; }
+article, .panel { background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 14px 40px #0003; }
+article { padding: 22px; }
+article p { color: var(--muted); font-size: 13px; }
+article strong { display: block; margin: 12px 0 8px; font-size: clamp(25px, 3vw, 34px); letter-spacing: -1px; }
+article span { color: var(--muted); font-size: 12px; }
+.panel { padding: 22px; margin-top: 16px; }
+.chart { display: flex; align-items: flex-end; gap: 5px; height: 220px; margin-top: 24px; padding-top: 16px; border-bottom: 1px solid var(--line); }
+.bar-wrap { position: relative; flex: 1; min-width: 3px; height: 100%; display: flex; align-items: flex-end; }
+.bar { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), #368aa0); transition: height .3s; }
+.bar-wrap:hover .bar { filter: brightness(1.25); }
+.bar-label { position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%) rotate(-45deg); transform-origin: center; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.trend { padding-bottom: 48px; }
+.two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.distribution { margin-top: 20px; }
+.dist-row { display: grid; grid-template-columns: minmax(100px, 1fr) 2fr auto; align-items: center; gap: 12px; margin: 14px 0; font-size: 13px; }
+.dist-track { height: 7px; border-radius: 8px; background: #202c3a; overflow: hidden; }
+.dist-fill { height: 100%; border-radius: inherit; background: var(--blue); }
+.dist-value { color: var(--muted); font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); padding: 32px 0; text-align: center; }
+.table-wrap { overflow-x: auto; margin-top: 16px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+th, td { padding: 13px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; }
+td { font-variant-numeric: tabular-nums; }
+.status { color: var(--accent); }
+.status.error-status { color: var(--danger); }
+footer { margin-top: 24px; font-size: 12px; text-align: center; }
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } .two-columns { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { main { width: min(100% - 24px, 1440px); padding-top: 24px; } header { align-items: flex-start; flex-direction: column; } .cards { grid-template-columns: 1fr; } .header-actions { width: 100%; } }
