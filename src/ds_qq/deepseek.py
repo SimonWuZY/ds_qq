@@ -40,14 +40,20 @@ class DeepSeekClient:
         session_id: int,
         trigger_message_id: int,
         context: list[dict[str, Any]],
+        system_prompt: str | None = None,
+        response_format: dict[str, str] | None = None,
+        purpose: str = "chat",
     ) -> DeepSeekReply:
-        messages = [{"role": "system", "content": self._settings.bot_system_prompt}, *context]
+        prompt = system_prompt or self._settings.bot_system_prompt
+        messages = [{"role": "system", "content": prompt}, *context]
         payload = {
             "model": self._settings.deepseek_model,
             "messages": messages,
             "max_tokens": self._settings.deepseek_max_output_tokens,
             "stream": False,
         }
+        if response_format:
+            payload["response_format"] = response_format
         headers = {
             "Authorization": f"Bearer {self._settings.deepseek_api_key.get_secret_value()}",
             "Content-Type": "application/json",
@@ -79,6 +85,7 @@ class DeepSeekClient:
                     group_id=group_id,
                     session_id=session_id,
                     trigger_message_id=trigger_message_id,
+                    purpose=purpose,
                     status="success",
                     started=started,
                     usage=usage,
@@ -108,6 +115,7 @@ class DeepSeekClient:
             group_id=group_id,
             session_id=session_id,
             trigger_message_id=trigger_message_id,
+            purpose=purpose,
             status="error",
             started=started,
             error=last_error,
@@ -121,6 +129,7 @@ class DeepSeekClient:
         group_id: int,
         session_id: int,
         trigger_message_id: int,
+        purpose: str,
         status: str,
         started: float,
         usage: dict[str, Any] | None = None,
@@ -133,6 +142,7 @@ class DeepSeekClient:
             session_id=session_id,
             trigger_message_id=trigger_message_id,
             model=self._settings.deepseek_model,
+            purpose=purpose,
             status=status,
             latency_ms=int((time.monotonic() - started) * 1000),
             usage=usage,

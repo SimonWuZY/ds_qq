@@ -14,7 +14,9 @@ from ds_qq.config import Settings, get_settings
 from ds_qq.db import Database
 from ds_qq.deepseek import DeepSeekClient, DeepSeekError
 from ds_qq.images import ImageError, ImageStore
+from ds_qq.memory import MemoryError, MemoryService
 from ds_qq.onebot import OneBotConnection, parse_message
+from ds_qq.persona import PersonaManager
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +28,15 @@ class GroupBot:
         database: Database,
         deepseek: DeepSeekClient,
         images: ImageStore,
+        persona: PersonaManager,
+        memory: MemoryService,
     ):
         self._settings = settings
         self._database = database
         self._deepseek = deepseek
         self._images = images
+        self._persona = persona
+        self._memory = memory
         self._locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._last_trigger: dict[int, float] = {}
 
@@ -79,7 +85,8 @@ class GroupBot:
             return
 
         command = text.split(maxsplit=1)[0].lower() if text else ""
-        triggered = parsed.at_bot or command in {"/help", "/new", "/stats"}
+        commands = {"/help", "/new", "/stats", "/memory", "/forget"}
+        triggered = parsed.at_bot or command in commands
         if not triggered:
             return
         if command == "/help":
@@ -88,7 +95,7 @@ class GroupBot:
         if command == "/new":
             self._database.start_new_session(group_id)
             await connection.send_group_reply(
-                group_id, message_id, "已开启新会话，历史消息仍已保留。"
+                group_id, message_id, "已开启新的短期会话，长期相处记忆会保留。"
             )
             return
         if command == "/stats":
@@ -97,6 +104,22 @@ class GroupBot:
                 group_id,
                 message_id,
                 f"本群已保存 {stats['messages']} 条消息，共 {stats['sessions']} 个会话。",
+            )
+            return
+        if command == "/memory":
+            await connection.send_group_reply(
+                group_id, message_id, self._memory_text(group_id, user_id)
+            )
+            return
+        if command == "/forget":
+            if sender.get("role") not in {"owner", "admin"}:
+                await connection.send_group_reply(
+                    group_id, message_id, "只有群主或管理员可以清除长期记忆。"
+                )
+                return
+            self._database.clear_memory(group_id)
+            await connection.send_group_reply(
+                group_id, message_id, "已清除本群长期相处记忆，原始聊天记录仍保留。"
             )
             return
         if not text and not images:
@@ -108,6 +131,10 @@ class GroupBot:
             return
         self._last_trigger[group_id] = time.monotonic()
 
+        try:
+            await self._memory.maybe_consolidate(group_id)
+        except (DeepSeekError, MemoryError) as exc:
+            logger.warning("Memory consolidation failed for group %s: %s", group_id, exc)
         session_id = self._database.get_active_session(group_id)
         context = self._database.build_context(
             group_id,
@@ -115,12 +142,14 @@ class GroupBot:
             max_chars=self._settings.bot_context_chars,
             max_images=self._settings.bot_context_images,
         )
+        memory_prompt = self._memory.prompt(group_id)
         try:
             reply = await self._deepseek.complete(
                 group_id=group_id,
                 session_id=session_id,
                 trigger_message_id=stored_id,
                 context=context,
+                system_prompt=self._persona.system_prompt(memory_prompt),
             )
         except DeepSeekError as exc:
             logger.error("DeepSeek request failed for group %s: %s", group_id, exc)
@@ -139,12 +168,27 @@ class GroupBot:
             session_id=session_id,
         )
 
+    def _memory_text(self, group_id: int, user_id: int) -> str:
+        snapshot, member = self._memory.member_details(group_id, user_id)
+        summary = snapshot.summary or "我们还在慢慢认识，暂时没有群聊摘要。"
+        lines = [f"本群记忆：{summary}"]
+        if member is None:
+            lines.append("关于你：还没有形成长期记忆。")
+        else:
+            facts = "；".join(member.facts[: self._settings.bot_memory_max_facts])
+            lines.append(f"关于你（{member.display_name}）：{facts or '暂时没有明确事实'}")
+            if member.relationship_notes:
+                lines.append(f"相处备注：{member.relationship_notes}")
+        return "\n".join(lines)
+
     @staticmethod
     def _help_text() -> str:
         return (
             "使用方式：@我 后输入问题，也可以直接发送图片或表情并 @我。\n"
-            "/new：开启新会话（保留历史）\n"
+            "/new：开启短期会话（保留长期记忆）\n"
             "/stats：查看本群存储统计\n"
+            "/memory：查看本群摘要和你本人的记忆\n"
+            "/forget：群主/管理员清除长期记忆\n"
             "/help：显示帮助"
         )
 
@@ -159,7 +203,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         database = Database(settings.database_path)
         deepseek = DeepSeekClient(settings, database)
         images = ImageStore(settings)
-        app.state.bot = GroupBot(settings, database, deepseek, images)
+        memory = MemoryService(settings, database, deepseek)
+        app.state.bot = GroupBot(
+            settings, database, deepseek, images, PersonaManager(settings), memory
+        )
         app.state.tasks = set()
         try:
             yield
