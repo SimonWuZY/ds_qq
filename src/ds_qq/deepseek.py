@@ -128,7 +128,7 @@ class DeepSeekClient:
         request_id: str | None,
         group_id: int,
         session_id: int,
-        trigger_message_id: int,
+        trigger_message_id: int | None,
         purpose: str,
         status: str,
         started: float,

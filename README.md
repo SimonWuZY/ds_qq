@@ -9,6 +9,7 @@
 - 文本、QQ 表情占位、图片和贴纸识图；图片按真实格式校验并本地保存，不依赖会过期的 QQ 图片链接。
 - 按群、按会话持久化用户消息和机器人回复；消息去重、同群串行处理、触发冷却、API 超时与有限重试。
 - 可编辑的大肥鱼人格，以及按批次提炼的群共同经历与成员长期记忆，详见[人格与记忆指南](docs/PERSONALITY.md)。
+- 每日固定或 AI 群推送，可 @指定成员、热修改配置并防止重复发送；视频抽帧和 B 站公开信息解析见[定时与多模态指南](docs/SCHEDULER_MEDIA.md)。
 - `/new` 切换短期会话并保留长期记忆，`/memory` 查看记忆，管理员可用 `/forget` 清除长期记忆。
 - `/stats` 查看存储统计，`/help` 查看帮助。
 - 独立本地看板展示请求数、成功率、输入/输出/缓存 Token、缓存命中率、延迟、趋势、群/模型分布、调用用途与成本估算。
@@ -61,7 +62,9 @@ QQ_GROUP_IDS=目标群号
 
 多个群用英文逗号分隔：`QQ_GROUP_IDS=123456789,987654321`。`.env` 和 `data/` 已被 Git 忽略，不要提交真实密钥或聊天数据。
 
-执行 `cp persona.example.txt persona.txt` 创建本地人格文件，编辑后重启机器人。人格调优、长期记忆、隐私命令和整理频率见[人格与记忆指南](docs/PERSONALITY.md)。
+执行 `cp persona.example.txt persona.txt` 创建本地人格文件，保存后下一条消息即可生效。人格调优、长期记忆、隐私命令和整理频率见[人格与记忆指南](docs/PERSONALITY.md)。
+
+执行 `cp scheduler.example.json scheduler.json` 可配置每日群推送；视频处理需在 macOS 执行 `brew install ffmpeg`。详见[定时与多模态指南](docs/SCHEDULER_MEDIA.md)。
 
 默认使用 `deepseek-flash`，它支持文本与图片。模型、上下文窗口、图片大小、冷却时间及 Token 估算费率均可在 `.env` 调整。
 
