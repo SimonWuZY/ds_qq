@@ -17,7 +17,7 @@ class VideoStore:
     def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None):
         self._settings = settings
         self._client = client or httpx.AsyncClient(
-            timeout_seconds=httpx.Timeout(45), follow_redirects=True, max_redirects=3
+            timeout=httpx.Timeout(45), follow_redirects=True, max_redirects=3
         )
         self._owns_client = client is None
 
