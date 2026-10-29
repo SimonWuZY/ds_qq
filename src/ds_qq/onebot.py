@@ -63,6 +63,7 @@ class OneBotConnection:
     def __init__(self, websocket: WebSocket):
         self._websocket = websocket
         self._pending: dict[str, asyncio.Future[dict[str, Any]]] = {}
+        self.self_id: int | None = None
 
     def resolve_response(self, event: dict[str, Any]) -> bool:
         echo = event.get("echo")
@@ -101,5 +102,16 @@ class OneBotConnection:
             message: list[dict[str, Any]] = []
             if index == 0 and message_id:
                 message.append({"type": "reply", "data": {"id": message_id}})
+            message.append({"type": "text", "data": {"text": chunk}})
+            await self.call("send_group_msg", {"group_id": group_id, "message": message})
+
+    async def send_group_message(
+        self, group_id: int, text: str, user_id: int | None = None
+    ) -> None:
+        chunks = [text[index : index + 1800] for index in range(0, len(text), 1800)] or ["…"]
+        for index, chunk in enumerate(chunks):
+            message: list[dict[str, Any]] = []
+            if index == 0 and user_id is not None:
+                message.append({"type": "at", "data": {"qq": str(user_id)}})
             message.append({"type": "text", "data": {"text": chunk}})
             await self.call("send_group_msg", {"group_id": group_id, "message": message})

@@ -17,6 +17,7 @@ from ds_qq.images import ImageError, ImageStore
 from ds_qq.memory import MemoryError, MemoryService
 from ds_qq.onebot import OneBotConnection, parse_message
 from ds_qq.persona import PersonaManager
+from ds_qq.scheduler import MessageScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -204,13 +205,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         deepseek = DeepSeekClient(settings, database)
         images = ImageStore(settings)
         memory = MemoryService(settings, database, deepseek)
-        app.state.bot = GroupBot(
-            settings, database, deepseek, images, PersonaManager(settings), memory
+        persona = PersonaManager(settings)
+        app.state.bot = GroupBot(settings, database, deepseek, images, persona, memory)
+        app.state.connection = None
+        scheduler = MessageScheduler(
+            settings, database, deepseek, persona, memory, lambda: app.state.connection
         )
+        scheduler.start()
         app.state.tasks = set()
         try:
             yield
         finally:
+            await scheduler.stop()
             for task in app.state.tasks:
                 task.cancel()
             await deepseek.close()
@@ -234,10 +240,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return
         await websocket.accept()
         connection = OneBotConnection(websocket)
+        websocket.app.state.connection = connection
         logger.info("NapCat connected")
         try:
             while True:
                 event = await websocket.receive_json()
+                if event.get("self_id"):
+                    connection.self_id = int(event["self_id"])
                 if connection.resolve_response(event):
                     continue
                 if event.get("post_type") != "message" or event.get("message_type") != "group":
@@ -256,6 +265,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             pass
         finally:
             connection.close()
+            if websocket.app.state.connection is connection:
+                websocket.app.state.connection = None
             if websocket.client_state != WebSocketState.DISCONNECTED:
                 await websocket.close()
             logger.info("NapCat disconnected")

@@ -83,6 +83,14 @@ class Database:
         );
         CREATE INDEX IF NOT EXISTS member_memory_group_id ON member_memory(group_id);
 
+        CREATE TABLE IF NOT EXISTS scheduled_runs (
+            job_id TEXT NOT NULL,
+            run_date TEXT NOT NULL,
+            group_id INTEGER NOT NULL,
+            created_at REAL NOT NULL,
+            PRIMARY KEY(job_id, run_date)
+        );
+
         CREATE TABLE IF NOT EXISTS api_usage (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             request_id TEXT,
@@ -390,6 +398,22 @@ class Database:
                     last_message_id=excluded.last_message_id,
                     updated_at=excluded.updated_at""",
                 (group_id, latest, time.time()),
+            )
+
+    def has_scheduled_run(self, job_id: str, run_date: str) -> bool:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT 1 FROM scheduled_runs WHERE job_id=? AND run_date=?",
+                (job_id, run_date),
+            ).fetchone()
+            return row is not None
+
+    def record_scheduled_run(self, job_id: str, run_date: str, group_id: int) -> None:
+        with self._lock, self._connection:
+            self._connection.execute(
+                "INSERT INTO scheduled_runs(job_id, run_date, group_id, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (job_id, run_date, group_id, time.time()),
             )
 
     def record_usage(

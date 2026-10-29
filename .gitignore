@@ -9,4 +9,5 @@ dist/
 build/
 data/
 persona.txt
+scheduler.json
 .DS_Store

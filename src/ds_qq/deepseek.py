@@ -38,7 +38,7 @@ class DeepSeekClient:
         *,
         group_id: int,
         session_id: int,
-        trigger_message_id: int,
+        trigger_message_id: int | None,
         context: list[dict[str, Any]],
         system_prompt: str | None = None,
         response_format: dict[str, str] | None = None,

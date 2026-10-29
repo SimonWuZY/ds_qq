@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     qq_group_ids: str = ""
     bot_system_prompt: str = "你是群里的 AI 助手，回答简洁、友好、准确。"
     bot_persona_file: Path = Path("persona.txt")
+    bot_scheduler_file: Path = Path("scheduler.json")
     bot_memory_interval_messages: int = Field(default=12, ge=2, le=100)
     bot_memory_batch_size: int = Field(default=60, ge=4, le=200)
     bot_memory_max_facts: int = Field(default=8, ge=1, le=20)
