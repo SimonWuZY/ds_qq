@@ -14,6 +14,7 @@ class OneBotError(RuntimeError):
 class ParsedMessage:
     text_parts: list[str] = field(default_factory=list)
     image_urls: list[str] = field(default_factory=list)
+    video_urls: list[str] = field(default_factory=list)
     at_bot: bool = False
     reply_to_id: str | None = None
 
@@ -48,6 +49,12 @@ def parse_message(segments: Any, self_id: int) -> ParsedMessage:
                 parsed.image_urls.append(str(url))
             else:
                 parsed.text_parts.append("[贴纸]" if kind == "mface" else "[图片]")
+        elif kind == "video":
+            url = data.get("url")
+            if url:
+                parsed.video_urls.append(str(url))
+            else:
+                parsed.text_parts.append("[视频]")
         elif kind == "face":
             parsed.text_parts.append(f"[QQ表情:{data.get('id', '')}]")
         elif kind == "reply":

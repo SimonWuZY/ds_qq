@@ -14,10 +14,12 @@ from ds_qq.config import Settings, get_settings
 from ds_qq.db import Database
 from ds_qq.deepseek import DeepSeekClient, DeepSeekError
 from ds_qq.images import ImageError, ImageStore
+from ds_qq.links import BilibiliEnricher
 from ds_qq.memory import MemoryError, MemoryService
 from ds_qq.onebot import OneBotConnection, parse_message
 from ds_qq.persona import PersonaManager
 from ds_qq.scheduler import MessageScheduler
+from ds_qq.video import VideoError, VideoStore
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,8 @@ class GroupBot:
         images: ImageStore,
         persona: PersonaManager,
         memory: MemoryService,
+        videos: VideoStore,
+        links: BilibiliEnricher,
     ):
         self._settings = settings
         self._database = database
@@ -38,6 +42,8 @@ class GroupBot:
         self._images = images
         self._persona = persona
         self._memory = memory
+        self._videos = videos
+        self._links = links
         self._locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._last_trigger: dict[int, float] = {}
 
@@ -60,10 +66,18 @@ class GroupBot:
         user_id: int,
     ) -> None:
         parsed = parse_message(event.get("message"), self_id)
-        text = parsed.text
+        text = await self._links.enrich(parsed.text)
         if parsed.reply_to_id:
             text = f"[回复消息 {parsed.reply_to_id}] {text}".strip()
         images = []
+        for url in parsed.video_urls[:2]:
+            try:
+                frames = await self._videos.extract_frames(url)
+                images.extend(frames)
+                text = f"{text} [视频抽帧{len(frames)}张]".strip()
+            except VideoError as exc:
+                logger.warning("Could not process video from group %s: %s", group_id, exc)
+                text = f"{text} [视频处理失败]".strip()
         for url in parsed.image_urls[:6]:
             try:
                 images.append(await self._images.download(url))
@@ -204,9 +218,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         database = Database(settings.database_path)
         deepseek = DeepSeekClient(settings, database)
         images = ImageStore(settings)
+        videos = VideoStore(settings)
+        links = BilibiliEnricher(settings)
         memory = MemoryService(settings, database, deepseek)
         persona = PersonaManager(settings)
-        app.state.bot = GroupBot(settings, database, deepseek, images, persona, memory)
+        app.state.bot = GroupBot(
+            settings, database, deepseek, images, persona, memory, videos, links
+        )
         app.state.connection = None
         scheduler = MessageScheduler(
             settings, database, deepseek, persona, memory, lambda: app.state.connection
@@ -221,6 +239,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 task.cancel()
             await deepseek.close()
             await images.close()
+            await videos.close()
+            await links.close()
             database.close()
 
     app = FastAPI(title="ds_qq bot", docs_url=None, redoc_url=None, lifespan=lifespan)

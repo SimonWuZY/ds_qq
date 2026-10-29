@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     bot_context_images: int = Field(default=4, ge=0, le=20)
     bot_group_cooldown_seconds: float = Field(default=2, ge=0)
     bot_max_image_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=32 * 1024 * 1024)
+    bot_max_video_bytes: int = Field(default=100 * 1024 * 1024, ge=1024, le=500 * 1024 * 1024)
+    bot_video_frames: int = Field(default=3, ge=1, le=3)
+    bot_max_bilibili_links: int = Field(default=2, ge=0, le=5)
 
     data_dir: Path = Path("data")
 
@@ -59,8 +62,13 @@ class Settings(BaseSettings):
     def images_dir(self) -> Path:
         return self.data_dir / "images"
 
+    @property
+    def videos_dir(self) -> Path:
+        return self.data_dir / "videos"
+
     def ensure_data_dirs(self) -> None:
         self.images_dir.mkdir(parents=True, exist_ok=True)
+        self.videos_dir.mkdir(parents=True, exist_ok=True)
 
     def validate_bot(self) -> None:
         if not self.deepseek_api_key.get_secret_value():
