@@ -1,0 +1,19 @@
+{
+  "jobs": [
+    {
+      "id": "morning-group",
+      "enabled": true,
+      "time": "09:00",
+      "group_id": 0,
+      "message": "咕噜，早上好。新的一天也别忘了喝水和休息。"
+    },
+    {
+      "id": "evening-friend",
+      "enabled": true,
+      "time": "21:30",
+      "group_id": 0,
+      "user_id": 10001,
+      "prompt": "给这位群友一句自然、简短的晚安问候，可以结合最近的共同话题，但不要尬聊或查户口。"
+    }
+  ]
+}

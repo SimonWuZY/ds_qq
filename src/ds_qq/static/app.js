@@ -21,7 +21,7 @@ function recent(rows) {
   $('recent').innerHTML = rows.map((row) => {
     const date = new Date(row.created_at * 1000).toLocaleString('zh-CN', { hour12: false });
     const error = row.error ? ` title="${escapeHtml(row.error)}"` : '';
-    const purpose = row.purpose === 'memory' ? '记忆整理' : '群聊';
+    const purpose = row.purpose === 'memory' ? '记忆整理' : (row.purpose === 'scheduled' ? '定时推送' : '群聊');
     return `<tr${error}><td>${date}</td><td>${row.group_id}</td><td>${escapeHtml(row.model)}</td><td>${purpose}</td><td class="status ${row.status === 'success' ? '' : 'error-status'}">${row.status === 'success' ? '成功' : '失败'}</td><td>${integer.format(row.prompt_tokens)} / ${integer.format(row.completion_tokens)}</td><td>${integer.format(row.cache_hit_tokens)}</td><td>${integer.format(row.latency_ms)} ms</td><td>${money.format(row.estimated_cost_usd)}</td></tr>`;
   }).join('');
 }

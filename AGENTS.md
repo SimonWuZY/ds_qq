@@ -16,6 +16,9 @@
 - `src/ds_qq/db.py`：SQLite 会话、消息、附件、长期记忆和用量。
 - `src/ds_qq/persona.py`：人格文件与动态记忆 prompt。
 - `src/ds_qq/memory.py`：群聊长期记忆整理。
+- `src/ds_qq/scheduler.py`：每日群推送与防重复调度。
+- `src/ds_qq/video.py`：视频下载与 FFmpeg 抽帧。
+- `src/ds_qq/links.py`：B 站短链与公开信息解析。
 - `src/ds_qq/dashboard.py`：独立本地用量看板。
 - `docs/NAPCAT_MACOS.md`：已验证的 macOS Docker 接入流程。
 
@@ -30,7 +33,7 @@
 
 ## 密钥与本地数据
 
-- 禁止提交 `.env`、`persona.txt`、`data/`、真实 Token、QQ 登录态和聊天记录。
+- 禁止提交 `.env`、`persona.txt`、`scheduler.json`、`data/`、真实 Token、QQ 登录态和聊天记录。
 - 示例配置只使用占位符。公开文档不得包含真实 QQ 号、群号或访问令牌。
 - 不使用 `git add -f` 添加被忽略文件。
 

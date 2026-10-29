@@ -14,6 +14,7 @@ class OneBotError(RuntimeError):
 class ParsedMessage:
     text_parts: list[str] = field(default_factory=list)
     image_urls: list[str] = field(default_factory=list)
+    video_urls: list[str] = field(default_factory=list)
     at_bot: bool = False
     reply_to_id: str | None = None
 
@@ -48,6 +49,12 @@ def parse_message(segments: Any, self_id: int) -> ParsedMessage:
                 parsed.image_urls.append(str(url))
             else:
                 parsed.text_parts.append("[贴纸]" if kind == "mface" else "[图片]")
+        elif kind == "video":
+            url = data.get("url")
+            if url:
+                parsed.video_urls.append(str(url))
+            else:
+                parsed.text_parts.append("[视频]")
         elif kind == "face":
             parsed.text_parts.append(f"[QQ表情:{data.get('id', '')}]")
         elif kind == "reply":
@@ -63,6 +70,7 @@ class OneBotConnection:
     def __init__(self, websocket: WebSocket):
         self._websocket = websocket
         self._pending: dict[str, asyncio.Future[dict[str, Any]]] = {}
+        self.self_id: int | None = None
 
     def resolve_response(self, event: dict[str, Any]) -> bool:
         echo = event.get("echo")
@@ -101,5 +109,16 @@ class OneBotConnection:
             message: list[dict[str, Any]] = []
             if index == 0 and message_id:
                 message.append({"type": "reply", "data": {"id": message_id}})
+            message.append({"type": "text", "data": {"text": chunk}})
+            await self.call("send_group_msg", {"group_id": group_id, "message": message})
+
+    async def send_group_message(
+        self, group_id: int, text: str, user_id: int | None = None
+    ) -> None:
+        chunks = [text[index : index + 1800] for index in range(0, len(text), 1800)] or ["…"]
+        for index, chunk in enumerate(chunks):
+            message: list[dict[str, Any]] = []
+            if index == 0 and user_id is not None:
+                message.append({"type": "at", "data": {"qq": str(user_id)}})
             message.append({"type": "text", "data": {"text": chunk}})
             await self.call("send_group_msg", {"group_id": group_id, "message": message})
