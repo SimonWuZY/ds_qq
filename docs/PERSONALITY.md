@@ -64,6 +64,6 @@ BOT_MEMORY_MAX_FACTS=8
 - 模型返回的用户 ID 必须属于本批消息参与者，事实数量与文本长度均有限制。
 - 长期记忆可能不准确。可以用 `/memory` 检查，并由管理员用 `/forget` 清除。
 - 群消息与整理内容会发送到 DeepSeek，请确保群成员知情。
-- 当前仅支持白名单群聊，私聊不会触发回复或长期记忆整理。
+- 支持白名单群聊与白名单好友私聊；不同好友的私聊记忆相互隔离，见[私聊指南](PRIVATE_AND_AUTONOMY.md)。
 
 开发规范见根目录 `AGENTS.md`，本次设计与回滚方式见 `docs/changes/2026-10-28-personality-memory.md`。

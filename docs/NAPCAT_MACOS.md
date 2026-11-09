@@ -187,7 +187,7 @@ uv run dsqq-dashboard
 
 访问 <http://127.0.0.1:8080>。完成一次对话后应出现请求数、Token、缓存和估算成本。
 
-当前版本只处理白名单群聊，**私聊不会触发 DeepSeek 回复**。
+支持白名单群聊与好友私聊；私聊需额外配置 `QQ_FRIEND_IDS`，见[私聊指南](PRIVATE_AND_AUTONOMY.md)。持久自启动见[macOS 持久运行](PERSISTENT_MACOS.md)。
 
 ## 7. 日常运维
 

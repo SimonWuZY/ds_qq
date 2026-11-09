@@ -51,11 +51,12 @@ cp scheduler.example.json scheduler.json
 | `enabled` | `false` 时停用任务 |
 | `time` | 每天触发时间，`HH:MM`，按 Asia/Shanghai 时区 |
 | `group_id` | 目标白名单群；只有一个白名单群时可填 `0` 自动选择 |
-| `user_id` | 可选，在群里 @该成员；不填写则正常群发 |
+| `user_id` | 群任务中可选 @成员；私聊任务中为白名单好友 QQ 号 |
+| `chat_type` | 默认 `group`；设为 `private` 时直接私聊好友 |
 | `message` | 固定文案，不调用 DeepSeek |
 | `prompt` | AI 文案要求，结合人格、长期记忆和近期上下文生成 |
 
-`message` 与 `prompt` 必须二选一。任务只允许白名单群，不支持私聊。NapCat 断线时会跳过，AI 推送成功后才写入群聊上下文，调用用途在看板中显示为“定时推送”。
+`message` 与 `prompt` 必须二选一。任务只允许白名单群或白名单好友。NapCat 断线时会跳过，AI 推送成功后才写入对应群聊/私聊上下文，调用用途在看板中显示为“定时推送”。
 
 同一任务同一天只发送一次，重启进程不会重复发送。修改任务时间或内容不需要改变 `id`；若希望创建一个全新任务，请使用新的 `id`。
 
