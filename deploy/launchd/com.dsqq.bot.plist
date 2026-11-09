@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.dsqq.bot</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-i</string>
+    <string>__UV_PATH__</string>
+    <string>run</string>
+    <string>dsqq-bot</string>
+  </array>
+  <key>WorkingDirectory</key><string>__WORKING_DIRECTORY__</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key><string>__HOME__</string>
+    <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>BOT_HOST</key><string>__BOT_HOST__</string>
+    <key>BOT_PORT</key><string>__BOT_PORT__</string>
+    <!--__ONEBOT_ENVIRONMENT__-->
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>__LOG_DIRECTORY__/bot.out.log</string>
+  <key>StandardErrorPath</key><string>__LOG_DIRECTORY__/bot.error.log</string>
+</dict>
+</plist>
