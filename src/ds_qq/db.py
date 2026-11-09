@@ -91,6 +91,12 @@ class Database:
             PRIMARY KEY(job_id, run_date)
         );
 
+        CREATE TABLE IF NOT EXISTS ambient_state (
+            group_id INTEGER PRIMARY KEY,
+            last_message_id INTEGER NOT NULL DEFAULT 0,
+            last_sent_at REAL NOT NULL DEFAULT 0
+        );
+
         CREATE TABLE IF NOT EXISTS api_usage (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             request_id TEXT,
@@ -398,6 +404,43 @@ class Database:
                     last_message_id=excluded.last_message_id,
                     updated_at=excluded.updated_at""",
                 (group_id, latest, time.time()),
+            )
+
+    def ambient_state(self, group_id: int) -> tuple[int, float]:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT last_message_id, last_sent_at FROM ambient_state WHERE group_id=?",
+                (group_id,),
+            ).fetchone()
+            return (row["last_message_id"], row["last_sent_at"]) if row else (0, 0)
+
+    def messages_after(self, group_id: int, message_id: int) -> int:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT COUNT(*) AS count FROM messages WHERE group_id=? AND id>?",
+                (group_id, message_id),
+            ).fetchone()
+            return int(row["count"])
+
+    def count_usage_today(self, group_id: int, purpose: str) -> int:
+        with self._lock:
+            row = self._connection.execute(
+                """SELECT COUNT(*) AS count FROM api_usage
+                WHERE group_id=? AND purpose=? AND status='success'
+                AND date(created_at, 'unixepoch', 'localtime')=date('now', 'localtime')""",
+                (group_id, purpose),
+            ).fetchone()
+            return int(row["count"])
+
+    def mark_ambient_sent(self, group_id: int, message_id: int) -> None:
+        with self._lock, self._connection:
+            self._connection.execute(
+                """INSERT INTO ambient_state(group_id, last_message_id, last_sent_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(group_id) DO UPDATE SET
+                    last_message_id=excluded.last_message_id,
+                    last_sent_at=excluded.last_sent_at""",
+                (group_id, message_id, time.time()),
             )
 
     def has_scheduled_run(self, job_id: str, run_date: str) -> bool:

@@ -122,3 +122,18 @@ class OneBotConnection:
                 message.append({"type": "at", "data": {"qq": str(user_id)}})
             message.append({"type": "text", "data": {"text": chunk}})
             await self.call("send_group_msg", {"group_id": group_id, "message": message})
+
+    async def send_private_reply(self, user_id: int, message_id: str, text: str) -> None:
+        await self._send_private(user_id, text, message_id)
+
+    async def send_private_message(self, user_id: int, text: str) -> None:
+        await self._send_private(user_id, text)
+
+    async def _send_private(self, user_id: int, text: str, reply_id: str = "") -> None:
+        chunks = [text[index : index + 1800] for index in range(0, len(text), 1800)] or ["…"]
+        for index, chunk in enumerate(chunks):
+            message: list[dict[str, Any]] = []
+            if index == 0 and reply_id:
+                message.append({"type": "reply", "data": {"id": reply_id}})
+            message.append({"type": "text", "data": {"text": chunk}})
+            await self.call("send_private_msg", {"user_id": user_id, "message": message})

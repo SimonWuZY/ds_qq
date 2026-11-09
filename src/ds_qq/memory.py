@@ -49,7 +49,8 @@ class MemoryService:
         snapshot = self._database.get_memory_snapshot(group_id)
         lines = []
         if snapshot.summary:
-            lines.append(f"群内共同经历：{snapshot.summary}")
+            label = "我们的共同经历" if group_id < 0 else "群内共同经历"
+            lines.append(f"{label}：{snapshot.summary}")
         if snapshot.relationship_notes:
             lines.append(f"相处注意事项：{snapshot.relationship_notes}")
         for member in snapshot.members:

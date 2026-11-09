@@ -50,3 +50,13 @@ class GroupMemory:
 class MemoryBatch:
     messages: tuple[StoredMessage, ...]
     last_message_id: int
+
+
+def private_scope_id(user_id: int) -> int:
+    if user_id <= 0:
+        raise ValueError("QQ user ID must be positive")
+    return -user_id
+
+
+def is_private_scope(scope_id: int) -> bool:
+    return scope_id < 0

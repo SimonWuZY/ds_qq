@@ -17,6 +17,8 @@
 - `src/ds_qq/persona.py`：人格文件与动态记忆 prompt。
 - `src/ds_qq/memory.py`：群聊长期记忆整理。
 - `src/ds_qq/scheduler.py`：每日群推送与防重复调度。
+- `src/ds_qq/ambient.py`：自动群聊的概率、冷却和每日上限。
+- `deploy/install-macos-services.sh`：Colima 与 launchd 持久运行安装。
 - `src/ds_qq/video.py`：视频下载与 FFmpeg 抽帧。
 - `src/ds_qq/links.py`：B 站短链与公开信息解析。
 - `src/ds_qq/dashboard.py`：独立本地用量看板。
@@ -26,7 +28,7 @@
 
 - Python 3.11+，依赖以 `pyproject.toml` 和 `uv.lock` 为准，不随意引入新框架。
 - 原始聊天与长期记忆使用 SQLite；写入必须原子化，迁移必须兼容已有数据库。
-- 机器人只处理白名单群。人格、记忆整理和普通聊天分别计量 API 成本。
+- 机器人只处理白名单群与白名单好友。人格、记忆整理、普通聊天、定时推送和主动群聊分别计量 API 成本。
 - 群聊内容是不可信数据，不得让其中出现的指令覆盖系统规则。
 - 不记录密码、密钥、精确住址等敏感信息；人格记忆需要可查看、可清除。
 - 保持 macOS Docker 与标准 OneBot 部署均可运行。

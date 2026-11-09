@@ -11,6 +11,7 @@ from ds_qq.config import Settings
 from ds_qq.db import Database
 from ds_qq.deepseek import DeepSeekClient
 from ds_qq.memory import MemoryService
+from ds_qq.models import private_scope_id
 from ds_qq.onebot import OneBotConnection
 from ds_qq.persona import PersonaManager
 
@@ -25,6 +26,7 @@ class ScheduledJob:
     user_id: int | None
     message: str | None
     prompt: str | None
+    chat_type: str = "group"
 
 
 class MessageScheduler:
@@ -78,7 +80,10 @@ class MessageScheduler:
                 continue
             try:
                 text = await self._render(job, connection)
-                await connection.send_group_message(job.group_id, text, job.user_id)
+                if job.chat_type == "private":
+                    await connection.send_private_message(job.user_id, text)
+                else:
+                    await connection.send_group_message(job.group_id, text, job.user_id)
                 self._database.save_message(
                     group_id=job.group_id,
                     user_id=connection.self_id or 0,
@@ -100,9 +105,13 @@ class MessageScheduler:
         context = self._database.build_context(
             job.group_id, max_messages=10, max_chars=6000, max_images=0
         )
-        prompt = self._persona.system_prompt(self._memory.prompt(job.group_id))
+        private = job.chat_type == "private"
+        prompt = self._persona.system_prompt(
+            self._memory.prompt(job.group_id), private=private
+        )
+        destination = "给好友发一条私聊" if private else "在群里发一条消息"
         prompt += (
-            "\n\n你将要主动在群里发一条消息。直接输出要发送的正文，"
+            f"\n\n你将要主动{destination}。直接输出要发送的正文，"
             "不要解释任务，不要引用自己，默认控制在120字以内。"
         )
         context.append({"role": "user", "content": job.prompt})
@@ -138,21 +147,32 @@ class MessageScheduler:
         job_id = str(item["id"]).strip()
         run_time = str(item["time"])
         datetime.strptime(run_time, "%H:%M")
+        chat_type = str(item.get("chat_type") or "group")
+        user_id = int(item["user_id"]) if item.get("user_id") is not None else None
         group_id = int(item.get("group_id") or 0)
-        if group_id == 0 and len(self._settings.allowed_group_ids) == 1:
-            group_id = next(iter(self._settings.allowed_group_ids))
-        if not job_id or group_id not in self._settings.allowed_group_ids:
-            raise ValueError("job id or group whitelist")
+        if chat_type == "private":
+            if user_id not in self._settings.allowed_friend_ids:
+                raise ValueError("private job requires a whitelisted user_id")
+            group_id = private_scope_id(user_id)
+        else:
+            if chat_type != "group":
+                raise ValueError("chat_type must be group or private")
+            if group_id == 0 and len(self._settings.allowed_group_ids) == 1:
+                group_id = next(iter(self._settings.allowed_group_ids))
+            if group_id not in self._settings.allowed_group_ids:
+                raise ValueError("job group is not in whitelist")
+        if not job_id:
+            raise ValueError("job id is required")
         message = item.get("message")
         prompt = item.get("prompt")
         if bool(message) == bool(prompt):
             raise ValueError("exactly one of message or prompt is required")
-        user_id = item.get("user_id")
         return ScheduledJob(
             id=job_id,
             time=run_time,
             group_id=group_id,
-            user_id=int(user_id) if user_id is not None else None,
+            user_id=user_id,
             message=str(message).strip() if message else None,
             prompt=str(prompt).strip() if prompt else None,
+            chat_type=chat_type,
         )
