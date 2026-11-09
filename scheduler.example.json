@@ -14,6 +14,22 @@
       "group_id": 0,
       "user_id": 10001,
       "prompt": "给这位群友一句自然、简短的晚安问候，可以结合最近的共同话题，但不要尬聊或查户口。"
+    },
+    {
+      "id": "private-wake-up",
+      "enabled": true,
+      "chat_type": "private",
+      "time": "08:30",
+      "user_id": 10001,
+      "message": "起床啦，先去洗把脸，再慢慢开始今天。"
+    },
+    {
+      "id": "private-study-check",
+      "enabled": true,
+      "chat_type": "private",
+      "time": "20:00",
+      "user_id": 10001,
+      "prompt": "自然、关心地问对方今天有没有努力学习，不要审问，不要制造焦虑，控制在60字以内。"
     }
   ]
 }
