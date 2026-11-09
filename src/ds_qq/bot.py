@@ -10,6 +10,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
+from ds_qq.ambient import AmbientReplyPolicy
 from ds_qq.config import Settings, get_settings
 from ds_qq.db import Database
 from ds_qq.deepseek import DeepSeekClient, DeepSeekError
@@ -36,6 +37,7 @@ class GroupBot:
         memory: MemoryService,
         videos: VideoStore,
         links: BilibiliEnricher,
+        ambient: AmbientReplyPolicy,
     ):
         self._settings = settings
         self._database = database
@@ -45,6 +47,7 @@ class GroupBot:
         self._memory = memory
         self._videos = videos
         self._links = links
+        self._ambient = ambient
         self._locks: dict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._last_trigger: dict[int, float] = {}
 
@@ -133,8 +136,11 @@ class GroupBot:
         command = text.split(maxsplit=1)[0].lower() if text else ""
         commands = {"/help", "/new", "/stats", "/memory", "/forget"}
         triggered = private or parsed.at_bot or command in commands
+        ambient = False
         if not triggered:
-            return
+            ambient = self._ambient.should_reply(group_id)
+            if not ambient:
+                return
         if command == "/help":
             await send(message_id, self._help_text())
             return
@@ -181,19 +187,30 @@ class GroupBot:
             max_images=self._settings.bot_context_images,
         )
         memory_prompt = self._memory.prompt(group_id)
+        prompt = self._persona.system_prompt(memory_prompt, private=private)
+        if ambient:
+            prompt += (
+                "\n\n这次没有人 @你。请根据当前话题自然接一句，不要解释为什么主动说话，"
+                "不要召唤所有人，也不要强行延续已经结束的对话。"
+            )
         try:
             reply = await self._deepseek.complete(
                 group_id=group_id,
                 session_id=session_id,
                 trigger_message_id=stored_id,
                 context=context,
-                system_prompt=self._persona.system_prompt(memory_prompt, private=private),
+                system_prompt=prompt,
+                purpose="ambient" if ambient else "chat",
             )
         except DeepSeekError as exc:
             logger.error("DeepSeek request failed for group %s: %s", group_id, exc)
             await send(message_id, "我暂时无法连接 DeepSeek，请稍后再试。")
             return
-        await send(message_id, reply.content)
+        if ambient:
+            await connection.send_group_message(group_id, reply.content)
+            self._ambient.mark_sent(group_id, stored_id)
+        else:
+            await send(message_id, reply.content)
         self._database.save_message(
             group_id=group_id,
             user_id=self_id,
@@ -244,8 +261,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         links = BilibiliEnricher(settings)
         memory = MemoryService(settings, database, deepseek)
         persona = PersonaManager(settings)
+        ambient = AmbientReplyPolicy(settings, database)
         app.state.bot = GroupBot(
-            settings, database, deepseek, images, persona, memory, videos, links
+            settings, database, deepseek, images, persona, memory, videos, links, ambient
         )
         app.state.connection = None
         scheduler = MessageScheduler(

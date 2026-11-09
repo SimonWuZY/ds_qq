@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     bot_max_video_bytes: int = Field(default=100 * 1024 * 1024, ge=1024, le=500 * 1024 * 1024)
     bot_video_frames: int = Field(default=3, ge=1, le=3)
     bot_max_bilibili_links: int = Field(default=2, ge=0, le=5)
+    bot_ambient_enabled: bool = False
+    bot_ambient_probability: float = Field(default=0.08, ge=0, le=1)
+    bot_ambient_interval_messages: int = Field(default=8, ge=1, le=100)
+    bot_ambient_cooldown_minutes: int = Field(default=20, ge=0, le=1440)
+    bot_ambient_max_daily: int = Field(default=10, ge=0, le=100)
 
     data_dir: Path = Path("data")
 
