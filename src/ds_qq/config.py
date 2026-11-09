@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     bot_host: str = "127.0.0.1"
     bot_port: int = Field(default=3001, ge=1, le=65535)
     qq_group_ids: str = ""
+    qq_friend_ids: str = ""
     bot_system_prompt: str = "你是群里的 AI 助手，回答简洁、友好、准确。"
     bot_persona_file: Path = Path("persona.txt")
     bot_scheduler_file: Path = Path("scheduler.json")
@@ -52,6 +53,15 @@ class Settings(BaseSettings):
             return frozenset(int(value) for value in values)
         except ValueError as exc:
             message = "QQ_GROUP_IDS must be a comma-separated list of numeric group IDs"
+            raise ValueError(message) from exc
+
+    @property
+    def allowed_friend_ids(self) -> frozenset[int]:
+        try:
+            values = (value.strip() for value in self.qq_friend_ids.split(",") if value.strip())
+            return frozenset(int(value) for value in values)
+        except ValueError as exc:
+            message = "QQ_FRIEND_IDS must be a comma-separated list of numeric QQ IDs"
             raise ValueError(message) from exc
 
     @property

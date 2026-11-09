@@ -16,6 +16,7 @@ from ds_qq.deepseek import DeepSeekClient, DeepSeekError
 from ds_qq.images import ImageError, ImageStore
 from ds_qq.links import BilibiliEnricher
 from ds_qq.memory import MemoryError, MemoryService
+from ds_qq.models import private_scope_id
 from ds_qq.onebot import OneBotConnection, parse_message
 from ds_qq.persona import PersonaManager
 from ds_qq.scheduler import MessageScheduler
@@ -57,6 +58,32 @@ class GroupBot:
         async with self._locks[group_id]:
             await self._handle_locked(event, connection, self_id, group_id, user_id)
 
+    async def handle_private_message(
+        self, event: dict, connection: OneBotConnection, self_id: int
+    ) -> None:
+        user_id = int(event["user_id"])
+        if user_id not in self._settings.allowed_friend_ids or user_id == self_id:
+            return
+        scope_id = private_scope_id(user_id)
+        async with self._locks[scope_id]:
+            await self._handle_locked(
+                event, connection, self_id, scope_id, user_id, private=True
+            )
+
+    async def _reply(
+        self,
+        connection: OneBotConnection,
+        scope_id: int,
+        user_id: int,
+        message_id: str,
+        text: str,
+        private: bool,
+    ) -> None:
+        if private:
+            await connection.send_private_reply(user_id, message_id, text)
+        else:
+            await connection.send_group_reply(scope_id, message_id, text)
+
     async def _handle_locked(
         self,
         event: dict,
@@ -64,7 +91,11 @@ class GroupBot:
         self_id: int,
         group_id: int,
         user_id: int,
+        private: bool = False,
     ) -> None:
+        async def send(message_id: str, text: str) -> None:
+            await self._reply(connection, group_id, user_id, message_id, text, private)
+
         parsed = parse_message(event.get("message"), self_id)
         text = await self._links.enrich(parsed.text)
         if parsed.reply_to_id:
@@ -101,44 +132,36 @@ class GroupBot:
 
         command = text.split(maxsplit=1)[0].lower() if text else ""
         commands = {"/help", "/new", "/stats", "/memory", "/forget"}
-        triggered = parsed.at_bot or command in commands
+        triggered = private or parsed.at_bot or command in commands
         if not triggered:
             return
         if command == "/help":
-            await connection.send_group_reply(group_id, message_id, self._help_text())
+            await send(message_id, self._help_text())
             return
         if command == "/new":
             self._database.start_new_session(group_id)
-            await connection.send_group_reply(
-                group_id, message_id, "已开启新的短期会话，长期相处记忆会保留。"
-            )
+            await send(message_id, "已开启新的短期会话，长期相处记忆会保留。")
             return
         if command == "/stats":
             stats = self._database.group_stats(group_id)
-            await connection.send_group_reply(
-                group_id,
+            label = "这段私聊" if private else "本群"
+            await send(
                 message_id,
-                f"本群已保存 {stats['messages']} 条消息，共 {stats['sessions']} 个会话。",
+                f"{label}已保存 {stats['messages']} 条消息，共 {stats['sessions']} 个会话。",
             )
             return
         if command == "/memory":
-            await connection.send_group_reply(
-                group_id, message_id, self._memory_text(group_id, user_id)
-            )
+            await send(message_id, self._memory_text(group_id, user_id, private))
             return
         if command == "/forget":
-            if sender.get("role") not in {"owner", "admin"}:
-                await connection.send_group_reply(
-                    group_id, message_id, "只有群主或管理员可以清除长期记忆。"
-                )
+            if not private and sender.get("role") not in {"owner", "admin"}:
+                await send(message_id, "只有群主或管理员可以清除长期记忆。")
                 return
             self._database.clear_memory(group_id)
-            await connection.send_group_reply(
-                group_id, message_id, "已清除本群长期相处记忆，原始聊天记录仍保留。"
-            )
+            await send(message_id, "已清除长期相处记忆，原始聊天记录仍保留。")
             return
         if not text and not images:
-            await connection.send_group_reply(group_id, message_id, "我在，有什么可以帮你？")
+            await send(message_id, "我在，有什么可以帮你？")
             return
         elapsed = time.monotonic() - self._last_trigger.get(group_id, 0)
         if elapsed < self._settings.bot_group_cooldown_seconds:
@@ -164,15 +187,13 @@ class GroupBot:
                 session_id=session_id,
                 trigger_message_id=stored_id,
                 context=context,
-                system_prompt=self._persona.system_prompt(memory_prompt),
+                system_prompt=self._persona.system_prompt(memory_prompt, private=private),
             )
         except DeepSeekError as exc:
             logger.error("DeepSeek request failed for group %s: %s", group_id, exc)
-            await connection.send_group_reply(
-                group_id, message_id, "我暂时无法连接 DeepSeek，请稍后再试。"
-            )
+            await send(message_id, "我暂时无法连接 DeepSeek，请稍后再试。")
             return
-        await connection.send_group_reply(group_id, message_id, reply.content)
+        await send(message_id, reply.content)
         self._database.save_message(
             group_id=group_id,
             user_id=self_id,
@@ -183,10 +204,11 @@ class GroupBot:
             session_id=session_id,
         )
 
-    def _memory_text(self, group_id: int, user_id: int) -> str:
+    def _memory_text(self, group_id: int, user_id: int, private: bool = False) -> str:
         snapshot, member = self._memory.member_details(group_id, user_id)
-        summary = snapshot.summary or "我们还在慢慢认识，暂时没有群聊摘要。"
-        lines = [f"本群记忆：{summary}"]
+        summary = snapshot.summary or "我们还在慢慢认识，暂时没有聊天摘要。"
+        label = "私聊记忆" if private else "本群记忆"
+        lines = [f"{label}：{summary}"]
         if member is None:
             lines.append("关于你：还没有形成长期记忆。")
         else:
@@ -269,16 +291,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     connection.self_id = int(event["self_id"])
                 if connection.resolve_response(event):
                     continue
-                if event.get("post_type") != "message" or event.get("message_type") != "group":
+                if event.get("post_type") != "message":
+                    continue
+                message_type = event.get("message_type")
+                if message_type not in {"group", "private"}:
                     continue
                 self_id = int(event.get("self_id") or 0)
                 tasks = websocket.app.state.tasks
                 if len(tasks) >= 100:
-                    logger.warning("Dropped group event because the task queue is full")
+                    logger.warning("Dropped message event because the task queue is full")
                     continue
-                task = asyncio.create_task(
-                    websocket.app.state.bot.handle_group_message(event, connection, self_id)
+                handler = (
+                    websocket.app.state.bot.handle_group_message
+                    if message_type == "group"
+                    else websocket.app.state.bot.handle_private_message
                 )
+                task = asyncio.create_task(handler(event, connection, self_id))
                 tasks.add(task)
                 task.add_done_callback(tasks.discard)
         except (WebSocketDisconnect, json.JSONDecodeError):
